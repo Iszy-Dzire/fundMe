@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoFund - Multi-Chain Support</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- WalletConnect SDK -->
+    <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+    <!-- Solana Web3 -->
+    <script src="https://unpkg.com/@solana/web3.js@1.70.1/lib/index.iife.min.js"></script>
+    <!-- Phantom wallet adapter -->
+    <script src="https://unpkg.com/@solana/wallet-adapter-phantom/lib/index.iife.min.js"></script>
+    <style>
+        :root {
+            --primary: #3a86ff;
+            --secondary: #8338ec;
+            --solana: #9945FF;
+            --success: #06d6a0;
+            --warning: #ffd166;
+            --danger: #ef476f;
+            --dark: #1a202c;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --ethereum: #627EEA;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: var(--light);
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+        
+        header {
+            background: rgba(26, 32, 44, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .logo-icon {
+            color: var(--primary);
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+        
+        nav a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        nav a:hover {
+            color: var(--primary);
+        }
+        
+        .wallet-connect {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .wallet-connect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .wallet-connected {
+            background: var(--success);
+            padding: 0.5rem 1.25rem;
+        }
+        
+        .wallet-disconnect {
+            background: var(--danger);
+            margin-left: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .network-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            margin-right: 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .network-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        
+        .network-wrong {
+            background: var(--danger);
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 4rem 0 2rem;
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            max-width: 700px;
+            margin: 0 auto 2rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .network-selector {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .network-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .network-btn.active {
+            border-color: var(--primary);
+            background: rgba(58, 134, 255, 0.2);
+        }
+        
+        .network-btn.ethereum.active {
+            border-color: var(--ethereum);
+            background: rgba(98, 126, 234, 0.2);
+        }
+        
+        .network-btn.solana.active {
+            border-color: var(--solana);
+            background: rgba(153, 69, 255, 0.2);
+        }
+        
+        .testnet-alert {
+            background: rgba(255, 209, 102, 0.2);
+            border: 1px solid var(--warning);
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 2rem auto;
+            max-width: 800px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .testnet-alert i {
+            color: var(--warning);
+            font-size: 1.5rem;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            nav ul {
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .wallet-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .network-selector {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+        
+        .card {
+            background: rgba(26, 32, 44, 0.8);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card h2 {
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .balance {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 1.5rem 0;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .currency-selector {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .currency-option {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .currency-option.active {
+            background: rgba(58, 134, 255, 0.2);
+            font-weight: 600;
+        }
+        
+        .amount-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1.25rem;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+        
+        .amount-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        .fund-btn {
+            width: 100%;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 1.25rem;
+            border-radius: 12px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .fund-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .fund-btn:disabled {
+            background: var(--gray);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .gas-estimate {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .transaction {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .transaction:last-child {
+            border-bottom: none;
+        }
+        
+        .transaction-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .transaction-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .income {
+            background: rgba(6, 214, 160, 0.2);
+            color: var(--success);
+        }
+        
+        .outcome {
+            background: rgba(239, 71, 111, 0.2);
+            color: var(--danger);
+        }
+        
+        .transaction-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .transaction-title {
+            font-weight: 500;
+        }
+        
+        .transaction-date {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .transaction-amount {
+            font-weight: 600;
+        }
+        
+        .income .transaction-amount {
+            color: var(--success);
+        }
+        
+        .outcome .transaction-amount {
+            color: var(--danger);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: rgba(26, 32, 44, 0.95);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+        
+        .modal h2 {
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+        }
+        
+        .wallet-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .wallet-option {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .wallet-option:hover {
+            border-color: var(--primary);
+        }
+        
+        .wallet-option i {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+        
+        .wallet-option.walletconnect {
+            background: rgba(64, 153, 255, 0.1);
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .status.success {
+            background: rgba(6, 214, 160, 0.1);
+            color: var(--success);
+        }
+        
+        .status.pending {
+            background: rgba(255, 209, 102, 0.1);
+            color: var(--warning);
+        }
+        
+        .status.error {
+            background: rgba(239, 71, 111, 0.1);
+            color: var(--danger);
+        }
+        
+        .transaction-hash {
+            word-break: break-all;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        
+        .view-explorer {
+            display: inline-block;
+            margin-top: 1rem;
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        .view-explorer:hover {
+            text-decoration: underline;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .faucet-link {
+            color: var(--primary);
+            text-decoration: none;
+            margin-top: 1rem;
+            display: inline-block;
+        }
+        
+        .faucet-link:hover {
+            text-decoration: underline;
+        }
+        
+        .wallet-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .copy-address {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 50%;
+            margin-left: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+        }
+        
+        .copy-address:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .notification.error {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .notification.info {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .qr-code-container {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .walletconnect-instructions {
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .solana-options {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .solana-wallet-option {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .solana-wallet-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .solana-wallet-option img {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-content">
+            <div class="logo">
+                <i class="fas fa-wallet logo-icon"></i>
+                <span>CryptoFund</span>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">Dashboard</a></li>
+                    <li><a href="#">Transactions</a></li>
+                    <li><a href="#">Support</a></li>
+                </ul>
+            </nav>
+            <div class="wallet-info">
+                <div id="networkIndicator" class="network-indicator" style="display: none;">
+                    <div class="network-dot" id="networkDot"></div>
+                    <span id="networkName">Network</span>
+                </div>
+                <button id="connectWallet" class="wallet-connect">
+                    <i class="fas fa-plug"></i>
+                    <span>Connect Wallet</span>
+                </button>
+                <button id="disconnectWallet" class="wallet-disconnect" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button id="copyAddress" class="copy-address" style="display: none;">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="hero">
+            <h1>Fund Your Crypto Wallet</h1>
+            <p>Connect your wallet to supported networks and add funds using test tokens. Experience real blockchain transactions.</p>
+            
+            <div class="network-selector">
+                <button id="ethereumBtn" class="network-btn ethereum active">
+                    <i class="fab fa-ethereum"></i>
+                    Ethereum
+                </button>
+                <button id="solanaBtn" class="network-btn solana">
+                    <i class="fas fa-bolt"></i>
+                    Solana
+                </button>
+            </div>
+            
+            <div id="ethereumAlert" class="testnet-alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>
+                    <h3>Using Sepolia Testnet</h3>
+                    <p>This application uses the Sepolia test network. You'll need test ETH from a Sepolia faucet to perform transactions.</p>
+                    <a href="https://sepoliafaucet.com/" class="faucet-link" target="_blank">Get Sepolia Test ETH</a>
+                </div>
+            </div>
+            
+            <div id="solanaAlert" class="testnet-alert" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>
+                    <h3>Using Solana Devnet</h3>
+                    <p>This application uses the Solana devnet. You'll need test SOL from a Solana faucet to perform transactions.</p>
+                    <a href="https://solfaucet.com/" class="faucet-link" target="_blank">Get Solana Test SOL</a>
+                </div>
+            </div>
+        </section>
+
+        <div class="main-content">
+            <div class="card">
+                <h2><i class="fas fa-coins"></i> Your Balance</h2>
+                <div id="balance" class="balance">0 ETH</div>
+                
+                <h2><i class="fas fa-money-bill-wave"></i> Add Funds</h2>
+                <div class="currency-selector">
+                    <div class="currency-option active" data-currency="ETH">ETH</div>
+                    <div class="currency-option" data-currency="TEST">TEST</div>
+                </div>
+                
+                <input type="number" id="amountInput" class="amount-input" placeholder="Enter amount" min="0" step="0.001">
+                
+                <div id="gasEstimate" class="gas-estimate">
+                    Estimated gas: <span id="gasAmount">0</span> ETH
+                </div>
+                
+                <button id="fundBtn" class="fund-btn" disabled>Fund Wallet</button>
+            </div>
+            
+            <div class="card">
+                <h2><i class="fas fa-history"></i> Recent Transactions</h2>
+                <div id="transactionsList" class="transactions-list">
+                    <div class="transaction">
+                        <div class="transaction-details">
+                            <div class="transaction-icon income">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="transaction-info">
+                                <div class="transaction-title">No transactions yet</div>
+                                <div class="transaction-date">Connect your wallet to see transactions</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="walletModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-wallet"></i> Connect Wallet</h2>
+            <p>Select your wallet provider to connect</p>
+            
+            <div id="ethereumWallets" class="wallet-options">
+                <div class="wallet-option" data-wallet="metamask">
+                    <i class="fab fa-ethereum"></i>
+                    <div>MetaMask</div>
+                </div>
+                <div class="wallet-option walletconnect" data-wallet="walletconnect">
+                    <i class="fas fa-wallet"></i>
+                    <div>WalletConnect</div>
+                </div>
+            </div>
+            
+            <div id="solanaWallets" class="solana-options" style="display: none;">
+                <div class="solana-wallet-option" data-wallet="phantom">
+                    <img src="https://phantom.imgix.net/logo.svg" alt="Phantom Wallet">
+                    <div>Phantom</div>
+                </div>
+                <div class="solana-wallet-option" data-wallet="solflare">
+                    <img src="https://solflare.com/assets/logo-square.png" alt="Solflare Wallet">
+                    <div>Solflare</div>
+                </div>
+            </div>
+            
+            <div id="walletConnectQr" style="display: none;">
+                <div class="walletconnect-instructions">
+                    Scan this QR code with your mobile wallet app to connect
+                </div>
+                <div class="qr-code-container">
+                    <div id="qrcode"></div>
+                </div>
+            </div>
+            
+            <button class="wallet-connect" id="modalConnect" style="display: none;">
+                <i class="fas fa-link"></i>
+                Connect Wallet
+            </button>
+        </div>
+    </div>
+
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-spinner fa-spin" id="transactionSpinner"></i> <span id="transactionTitle">Processing Transaction</span></h2>
+            
+            <div id="pendingStatus" class="status pending">
+                <i class="fas fa-clock"></i>
+                <span>Waiting for confirmation in your wallet...</span>
+            </div>
+            
+            <div id="successStatus" class="status success" style="display: none;">
+                <i class="fas fa-check-circle"></i>
+                <span>Transaction confirmed! Funding complete.</span>
+            </div>
+            
+            <div id="errorStatus" class="status error" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="errorMessage">Transaction failed. Please try again.</span>
+            </div>
+            
+            <p id="transactionText">Please confirm the transaction in your wallet to complete the funding process.</p>
+            
+            <div id="transactionHash" class="transaction-hash" style="display: none;"></div>
+            <a id="explorerLink" class="view-explorer" target="_blank" style="display: none;">View on Explorer</a>
+            
+            <button class="fund-btn" id="closeTransaction">Done</button>
+        </div>
+    </div>
+
+    <footer class="container">
+        <p>This is a real application connected to blockchain testnets. Real transactions will occur but using test tokens.</p>
+        <p>© 2023 CryptoFund Demo. All rights reserved.</p>
+    </footer>
+
+    <!-- Web3 library for blockchain interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+    <!-- QR Code generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const connectWalletBtn = document.getElementById('connectWallet');
+            const disconnectWalletBtn = document.getElementById('disconnectWallet');
+            const copyAddressBtn = document.getElementById('copyAddress');
+            const walletModal = document.getElementById('walletModal');
+            const transactionModal = document.getElementById('transactionModal');
+            const modalConnectBtn = document.getElementById('modalConnect');
+            const closeTransactionBtn = document.getElementById('closeTransaction');
+            const fundBtn = document.getElementById('fundBtn');
+            const balanceElement = document.getElementById('balance');
+            const amountInput = document.getElementById('amountInput');
+            const transactionsList = document.getElementById('transactionsList');
+            const networkIndicator = document.getElementById('networkIndicator');
+            const networkName = document.getElementById('networkName');
+            const networkDot = document.getElementById('networkDot');
+            const gasEstimate = document.getElementById('gasEstimate');
+            const gasAmount = document.getElementById('gasAmount');
+            const walletConnectQr = document.getElementById('walletConnectQr');
+            const ethereumBtn = document.getElementById('ethereumBtn');
+            const solanaBtn = document.getElementById('solanaBtn');
+            const ethereumAlert = document.getElementById('ethereumAlert');
+            const solanaAlert = document.getElementById('solanaAlert');
+            const ethereumWallets = document.getElementById('ethereumWallets');
+            const solanaWallets = document.getElementById('solanaWallets');
+            
+            // State
+            let web3;
+            let solanaConnection;
+            let account;
+            let chainId;
+            let balance = 0;
+            let isRightNetwork = false;
+            let walletConnectProvider = null;
+            let connector = null;
+            let currentNetwork = 'ethereum'; // 'ethereum' or 'solana'
+            
+            // Check if MetaMask is installed
+            if (typeof window.ethereum !== 'undefined') {
+                console.log('MetaMask is installed!');
+                web3 = new Web3(window.ethereum);
+            } else {
+                showNotification('MetaMask not detected. Using WalletConnect for Ethereum connection.', 'info');
+            }
+            
+            // Initialize Solana connection
+            solanaConnection = new solanaWeb3.Connection(
+                solanaWeb3.clusterApiUrl('devnet'),
+                'confirmed'
+            );
+            
+            // Network selection
+            ethereumBtn.addEventListener('click', function() {
+                currentNetwork = 'ethereum';
+                ethereumBtn.classList.add('active');
+                solanaBtn.classList.remove('active');
+                ethereumAlert.style.display = 'flex';
+                solanaAlert.style.display = 'none';
+                
+                // Update balance display
+                if (account) {
+                    updateBalance();
+                }
+                
+                // If wallet is connected but to wrong network for current selection
+                if (account && currentNetwork === 'ethereum' && !isRightNetwork) {
+                    showNotification('Please switch to Sepolia Test Network', 'error');
+                }
+            });
+            
+            solanaBtn.addEventListener('click', function() {
+                currentNetwork = 'solana';
+                solanaBtn.classList.add('active');
+                ethereumBtn.classList.remove('active');
+                ethereumAlert.style.display = 'none';
+                solanaAlert.style.display = 'flex';
+                
+                // Update balance display
+                if (account) {
+                    updateBalance();
+                }
+                
+                // For Solana, we don't need network checks like Ethereum
+                if (account && currentNetwork === 'solana') {
+                    isRightNetwork = true;
+                    fundBtn.disabled = false;
+                    networkDot.classList.remove('network-wrong');
+                    networkName.textContent = 'Solana Devnet';
+                }
+            });
+            
+            // Connect Wallet Button Click
+            connectWalletBtn.addEventListener('click', function() {
+                if (account) {
+                    // Already connected, do nothing (disconnect is handled by separate button)
+                    return;
+                } else {
+                    walletModal.style.display = 'flex';
+                    
+                    // Show appropriate wallet options based on selected network
+                    if (currentNetwork === 'ethereum') {
+                        ethereumWallets.style.display = 'grid';
+                        solanaWallets.style.display = 'none';
+                    } else {
+                        ethereumWallets.style.display = 'none';
+                        solanaWallets.style.display = 'flex';
+                    }
+                }
+            });
+            
+            // Wallet option selection for Ethereum
+            document.querySelectorAll('#ethereumWallets .wallet-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const walletType = this.getAttribute('data-wallet');
+                    
+                    if (walletType === 'metamask') {
+                        // Show MetaMask connection button
+                        walletConnectQr.style.display = 'none';
+                        modalConnectBtn.style.display = 'block';
+                        document.querySelectorAll('#ethereumWallets .wallet-option').forEach(opt => {
+                            opt.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        });
+                        this.style.borderColor = 'var(--primary)';
+                    } else if (walletType === 'walletconnect') {
+                        // Initiate WalletConnect connection
+                        initWalletConnect();
+                        document.querySelectorAll('#ethereumWallets .wallet-option').forEach(opt => {
+                            opt.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        });
+                        this.style.borderColor = 'var(--primary)';
+                    }
+                });
+            });
+            
+            // Wallet option selection for Solana
+            document.querySelectorAll('#solanaWallets .solana-wallet-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const walletType = this.getAttribute('data-wallet');
+                    
+                    // For Solana, we'll focus on Phantom for this example
+                    if (walletType === 'phantom') {
+                        connectSolanaWallet();
+                    } else if (walletType === 'solflare') {
+                        showNotification('Solflare support coming soon!', 'info');
+                    }
+                });
+            });
+            
+            // Disconnect Wallet Button
+            disconnectWalletBtn.addEventListener('click', disconnectWallet);
+            
+            // Copy Address Button
+            copyAddressBtn.addEventListener('click', function() {
+                navigator.clipboard.writeText(account).then(() => {
+                    showNotification('Address copied to clipboard!', 'success');
+                });
+            });
+            
+            // Modal Connect Button (for MetaMask)
+            modalConnectBtn.addEventListener('click', function() {
+                connectEthereumWallet();
+                walletModal.style.display = 'none';
+            });
+            
+            // Amount input changes
+            amountInput.addEventListener('input', function() {
+                if (account && isRightNetwork && currentNetwork === 'ethereum') {
+                    estimateGas();
+                }
+            });
+            
+            // Fund Button Click
+            fundBtn.addEventListener('click', async function() {
+                const amount = parseFloat(amountInput.value);
+                if (isNaN(amount) || amount <= 0) {
+                    showNotification('Please enter a valid amount', 'error');
+                    return;
+                }
+                
+                // Show transaction modal
+                transactionModal.style.display = 'flex';
+                
+                try {
+                    if (currentNetwork === 'ethereum') {
+                        await sendEthereumTransaction(amount);
+                    } else if (currentNetwork === 'solana') {
+                        await sendSolanaTransaction(amount);
+                    }
+                } catch (error) {
+                    console.error('Transaction failed:', error);
+                    document.getElementById('pendingStatus').style.display = 'none';
+                    document.getElementById('errorStatus').style.display = 'flex';
+                    document.getElementById('transactionTitle').textContent = 'Transaction Failed';
+                    document.getElementById('transactionSpinner').className = 'fas fa-exclamation-circle';
+                    
+                    // User rejected the transaction
+                    if (error.code === 4001 || error.code === 4000) {
+                        document.getElementById('errorMessage').textContent = 'Transaction rejected by user.';
+                    } else {
+                        document.getElementById('errorMessage').textContent = error.message;
+                    }
+                }
+            });
+            
+            // Close Transaction Modal
+            closeTransactionBtn.addEventListener('click', function() {
+                transactionModal.style.display = 'none';
+                resetTransactionModal();
+            });
+            
+            // Close modals when clicking outside
+            window.addEventListener('click', function(event) {
+                if (event.target === walletModal) {
+                    walletModal.style.display = 'none';
+                }
+                if (event.target === transactionModal) {
+                    transactionModal.style.display = 'none';
+                    resetTransactionModal();
+                }
+            });
+            
+            // Initialize WalletConnect
+            function initWalletConnect() {
+                try {
+                    // Initialize WalletConnect Provider
+                    walletConnectProvider = new WalletConnectProvider.default({
+                        rpc: {
+                            1: "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161",
+                            11155111: "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161"
+                        },
+                        chainId: 11155111, // Default to Sepolia
+                    });
+                    
+                    // Enable session (triggers QR Code modal)
+                    walletConnectProvider.enable().then(() => {
+                        // Create Web3 instance
+                        web3 = new Web3(walletConnectProvider);
+                        
+                        // Get accounts
+                        web3.eth.getAccounts().then(accounts => {
+                            if (accounts.length > 0) {
+                                account = accounts[0];
+                                setupWalletConnect();
+                                walletModal.style.display = 'none';
+                            }
+                        });
+                    }).catch(err => {
+                        console.error("WalletConnect error:", err);
+                        showNotification('Failed to connect with WalletConnect', 'error');
+                    });
+                    
+                    // Display QR code
+                    walletConnectProvider.connector.on("display_uri", (err, payload) => {
+                        const uri = payload.params[0];
+                        QRCode.toDataURL(uri, function(err, url) {
+                            if (err) {
+                                console.error("QR code generation error:", err);
+                                return;
+                            }
+                            
+                            walletConnectQr.style.display = 'block';
+                            modalConnectBtn.style.display = 'none';
+                            
+                            document.getElementById('qrcode').innerHTML = `
+                                <img src="${url}" alt="WalletConnect QR Code" style="max-width: 100%;">
+                            `;
+                        });
+                    });
+                    
+                    // Subscribe to accounts change
+                    walletConnectProvider.on("accountsChanged", (accounts) => {
+                        if (accounts.length === 0) {
+                            disconnectWallet();
+                        } else {
+                            account = accounts[0];
+                            updateUI();
+                        }
+                    });
+                    
+                    // Subscribe to chain change
+                    walletConnectProvider.on("chainChanged", (chainId) => {
+                        handleChainChanged(parseInt(chainId, 16));
+                    });
+                    
+                    // Subscribe to session disconnect
+                    walletConnectProvider.on("disconnect", (code, reason) => {
+                        console.log("WalletConnect session disconnected", code, reason);
+                        disconnectWallet();
+                    });
+                    
+                } catch (error) {
+                    console.error("Error initializing WalletConnect:", error);
+                    showNotification('Error initializing WalletConnect', 'error');
+                }
+            }
+            
+            // Setup after WalletConnect connection
+            function setupWalletConnect() {
+                web3.eth.getChainId().then(id => {
+                    chainId = id;
+                    isRightNetwork = chainId === 11155111;
+                    updateUI();
+                    updateBalance();
+                    loadTransactionHistory();
+                    
+                    showNotification('Connected via WalletConnect!', 'success');
+                });
+            }
+            
+            // Connect to Solana wallet
+            async function connectSolanaWallet() {
+                try {
+                    // Check if Phantom is installed
+                    if (!window.solana || !window.solana.isPhantom) {
+                        showNotification('Phantom wallet not detected. Please install it first.', 'error');
+                        return;
+                    }
+                    
+                    // Connect to Phantom wallet
+                    const response = await window.solana.connect();
+                    account = response.publicKey.toString();
+                    
+                    // For Solana, we don't have the same network checks as Ethereum
+                    isRightNetwork = true;
+                    
+                    // Update UI
+                    updateUI();
+                    
+                    // Update balance
+                    await updateBalance();
+                    
+                    // Load transaction history
+                    loadTransactionHistory();
+                    
+                    walletModal.style.display = 'none';
+                    
+                    showNotification('Connected to Phantom wallet!', 'success');
+                    
+                } catch (error) {
+                    console.error('Error connecting to Solana wallet:', error);
+                    showNotification('Failed to connect to wallet. Please try again.', 'error');
+                }
+            }
+            
+            // Connect Ethereum wallet function (for MetaMask)
+            async function connectEthereumWallet() {
+                if (typeof window.ethereum !== 'undefined') {
+                    try {
+                        // Request account access
+                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        account = accounts[0];
+                        
+                        // Get current chain ID
+                        chainId = await web3.eth.getChainId();
+                        
+                        // Check if connected to Sepolia (chainId: 11155111)
+                        isRightNetwork = chainId === 11155111;
+                        
+                        if (!isRightNetwork) {
+                            networkDot.classList.add('network-wrong');
+                            showNotification('Please switch to Sepolia Test Network', 'error');
+                            
+                            try {
+                                // Try to switch to Sepolia
+                                await window.ethereum.request({
+                                    method: 'wallet_switchEthereumChain',
+                                    params: [{ chainId: '0xaa36a7' }], // Sepolia chainId
+                                });
+                                
+                                // Update chainId after switching
+                                chainId = await web3.eth.getChainId();
+                                isRightNetwork = chainId === 11155111;
+                                
+                                if (isRightNetwork) {
+                                    networkDot.classList.remove('network-wrong');
+                                    showNotification('Switched to Sepolia network', 'success');
+                                }
+                            } catch (switchError) {
+                                // This error code indicates that the chain has not been added to MetaMask
+                                if (switchError.code === 4902) {
+                                    try {
+                                        await window.ethereum.request({
+                                            method: 'wallet_addEthereumChain',
+                                            params: [
+                                                {
+                                                    chainId: '0xaa36a7',
+                                                    chainName: 'Sepolia Test Network',
+                                                    rpcUrls: ['https://rpc.sepolia.org'],
+                                                    nativeCurrency: {
+                                                        name: 'Sepolia ETH',
+                                                        symbol: 'ETH',
+                                                        decimals: 18
+                                                    },
+                                                    blockExplorerUrls: ['https://sepolia.etherscan.io']
+                                                }
+                                            ]
+                                        });
+                                        
+                                        // Update chainId after adding and switching
+                                        chainId = await web3.eth.getChainId();
+                                        isRightNetwork = chainId === 11155111;
+                                        
+                                        if (isRightNetwork) {
+                                            networkDot.classList.remove('network-wrong');
+                                            showNotification('Added and switched to Sepolia network', 'success');
+                                        }
+                                    } catch (addError) {
+                                        console.error('Error adding Sepolia network:', addError);
+                                        showNotification('Failed to add Sepolia network', 'error');
+                                    }
+                                } else {
+                                    console.error('Error switching to Sepolia:', switchError);
+                                }
+                            }
+                        } else {
+                            networkDot.classList.remove('network-wrong');
+                        }
+                        
+                        // Update UI
+                        updateUI();
+                        
+                        // Update balance
+                        await updateBalance();
+                        
+                        // Load transaction history
+                        loadTransactionHistory();
+                        
+                        // Listen for account changes
+                        window.ethereum.on('accountsChanged', handleAccountsChanged);
+                        
+                        // Listen for chain changes
+                        window.ethereum.on('chainChanged', handleChainChanged);
+                        
+                    } catch (error) {
+                        console.error('User denied account access or error occurred:', error);
+                        showNotification('Failed to connect wallet. Please try again.', 'error');
+                    }
+                } else {
+                    showNotification('Please install MetaMask or use WalletConnect!', 'error');
+                }
+            }
+            
+            // Update UI after connection
+            function updateUI() {
+                let displayAddress;
+                
+                if (currentNetwork === 'ethereum') {
+                    displayAddress = `${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
+                } else {
+                    displayAddress = `${account.substring(0, 4)}...${account.substring(account.length - 4)}`;
+                }
+                
+                connectWalletBtn.innerHTML = `<i class="fas fa-check-circle"></i><span>${displayAddress}</span>`;
+                connectWalletBtn.classList.add('wallet-connected');
+                
+                // Show additional buttons
+                disconnectWalletBtn.style.display = 'block';
+                copyAddressBtn.style.display = 'block';
+                
+                // Show network indicator
+                networkIndicator.style.display = 'flex';
+                
+                if (currentNetwork === 'ethereum') {
+                    networkName.textContent = getNetworkName(chainId);
+                    
+                    if (isRightNetwork) {
+                        networkDot.classList.remove('network-wrong');
+                        fundBtn.disabled = false;
+                    } else {
+                        networkDot.classList.add('network-wrong');
+                        fundBtn.disabled = true;
+                    }
+                } else {
+                    networkName.textContent = 'Solana Devnet';
+                    networkDot.classList.remove('network-wrong');
+                    fundBtn.disabled = false;
+                }
+            }
+            
+            // Disconnect wallet function
+            function disconnectWallet() {
+                // Disconnect WalletConnect if active
+                if (walletConnectProvider) {
+                    walletConnectProvider.disconnect();
+                    walletConnectProvider = null;
+                }
+                
+                // Disconnect Solana wallet if connected
+                if (currentNetwork === 'solana' && window.solana && window.solana.disconnect) {
+                    window.solana.disconnect();
+                }
+                
+                account = null;
+                isRightNetwork = false;
+                connectWalletBtn.innerHTML = '<i class="fas fa-plug"></i><span>Connect Wallet</span>';
+                connectWalletBtn.classList.remove('wallet-connected');
+                networkIndicator.style.display = 'none';
+                disconnectWalletBtn.style.display = 'none';
+                copyAddressBtn.style.display = 'none';
+                fundBtn.disabled = true;
+                balanceElement.textContent = currentNetwork === 'ethereum' ? '0 ETH' : '0 SOL';
+                gasEstimate.style.display = 'none';
+                
+                transactionsList.innerHTML = `
+                    <div class="transaction">
+                        <div class="transaction-details">
+                            <div class="transaction-icon income">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="transaction-info">
+                                <div class="transaction-title">No transactions yet</div>
+                                <div class="transaction-date">Connect your wallet to see transactions</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remove listeners
+                if (window.ethereum) {
+                    window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+                    window.ethereum.removeListener('chainChanged', handleChainChanged);
+                }
+                
+                showNotification('Wallet disconnected', 'info');
+            }
+            
+            // Handle accounts changed
+            function handleAccountsChanged(accounts) {
+                if (accounts.length === 0) {
+                    // User disconnected their wallet
+                    disconnectWallet();
+                } else if (accounts[0] !== account) {
+                    // User switched accounts
+                    account = accounts[0];
+                    connectWalletBtn.innerHTML = `<i class="fas fa-check-circle"></i><span>${account.substring(0, 6)}...${account.substring(account.length - 4)}</span>`;
+                    updateBalance();
+                    loadTransactionHistory();
+                }
+            }
+            
+            // Handle chain changed
+            function handleChainChanged(newChainId) {
+                // Convert hex chainId to decimal
+                chainId = parseInt(newChainId, 16);
+                networkName.textContent = getNetworkName(chainId);
+                
+                // Check if connected to Sepolia
+                isRightNetwork = chainId === 11155111;
+                
+                if (isRightNetwork) {
+                    networkDot.classList.remove('network-wrong');
+                    fundBtn.disabled = false;
+                    showNotification('Connected to Sepolia network', 'success');
+                    
+                    // Update balance when switching to correct network
+                    updateBalance();
+                    estimateGas();
+                } else {
+                    networkDot.classList.add('network-wrong');
+                    fundBtn.disabled = true;
+                    showNotification('Please switch to Sepolia Test Network', 'error');
+                    gasEstimate.style.display = 'none';
+                }
+            }
+            
+            // Get network name from chain ID
+            function getNetworkName(chainId) {
+                switch (chainId) {
+                    case 1: return 'Ethereum Mainnet';
+                    case 11155111: return 'Sepolia Testnet';
+                    case 5: return 'Goerli Testnet';
+                    case 137: return 'Polygon Mainnet';
+                    case 80001: return 'Mumbai Testnet';
+                    default: return `Unknown Network (${chainId})`;
+                }
+            }
+            
+            // Update balance function
+            async function updateBalance() {
+                if (account) {
+                    try {
+                        if (currentNetwork === 'ethereum' && web3) {
+                            // Get balance in wei
+                            const balanceWei = await web3.eth.getBalance(account);
+                            
+                            // Convert from wei to ETH
+                            balance = web3.utils.fromWei(balanceWei, 'ether');
+                            
+                            // Update UI
+                            balanceElement.textContent = `${parseFloat(balance).toFixed(4)} ETH`;
+                        } else if (currentNetwork === 'solana') {
+                            // Get balance in lamports
+                            const publicKey = new solanaWeb3.PublicKey(account);
+                            const balanceLamports = await solanaConnection.getBalance(publicKey);
+                            
+                            // Convert from lamports to SOL
+                            balance = balanceLamports / solanaWeb3.LAMPORTS_PER_SOL;
+                            
+                            // Update UI
+                            balanceElement.textContent = `${parseFloat(balance).toFixed(4)} SOL`;
+                        }
+                    } catch (error) {
+                        console.error('Error fetching balance:', error);
+                    }
+                }
+            }
+            
+            // Estimate gas for Ethereum transaction
+            async function estimateGas() {
+                const amount = parseFloat(amountInput.value);
+                
+                if (isNaN(amount) || amount <= 0) {
+                    gasEstimate.style.display = 'none';
+                    return;
+                }
+                
+                try {
+                    // Convert amount to wei
+                    const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+                    
+                    // Estimate gas (for demo purposes, we'll use a fixed value)
+                    // In a real application, you would use web3.eth.estimateGas()
+                    const estimatedGas = 21000; // Standard gas for simple ETH transfer
+                    const gasPrice = await web3.eth.getGasPrice();
+                    
+                    // Calculate gas cost in ETH
+                    const gasCostWei = estimatedGas * gasPrice;
+                    const gasCostEth = web3.utils.fromWei(gasCostWei.toString(), 'ether');
+                    
+                    // Update UI
+                    gasAmount.textContent = parseFloat(gasCostEth).toFixed(6);
+                    gasEstimate.style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('Error estimating gas:', error);
+                    gasEstimate.style.display = 'none';
+                }
+            }
+            
+            // Send Ethereum transaction
+            async function sendEthereumTransaction(amount) {
+                // Convert amount to wei (1 ETH = 10^18 wei)
+                const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+                
+                // In a real dApp, you would send to a contract address
+                // For demo purposes, we'll send to a hardcoded address
+                // In production, never hardcode addresses!
+                const recipientAddress = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"; // Example address
+                
+                // Send transaction
+                const transaction = await web3.eth.sendTransaction({
+                    from: account,
+                    to: recipientAddress,
+                    value: amountInWei
+                });
+                
+                // Transaction successful
+                document.getElementById('pendingStatus').style.display = 'none';
+                document.getElementById('successStatus').style.display = 'flex';
+                document.getElementById('transactionTitle').textContent = 'Transaction Successful';
+                document.getElementById('transactionSpinner').className = 'fas fa-check-circle';
+                document.getElementById('transactionText').textContent = 'Your transaction was successful.';
+                
+                // Show transaction hash
+                document.getElementById('transactionHash').textContent = `Transaction Hash: ${transaction.transactionHash}`;
+                document.getElementById('transactionHash').style.display = 'block';
+                
+                // Show explorer link
+                const explorerLink = document.getElementById('explorerLink');
+                explorerLink.href = `https://sepolia.etherscan.io/tx/${transaction.transactionHash}`;
+                explorerLink.style.display = 'inline-block';
+                
+                // Update balance
+                await updateBalance();
+                
+                // Add transaction to history
+                addTransactionToHistory(amount, transaction.transactionHash, 'outcome');
+            }
+            
+            // Send Solana transaction
+            async function sendSolanaTransaction(amount) {
+                // Convert amount to lamports (1 SOL = 10^9 lamports)
+                const amountInLamports = amount * solanaWeb3.LAMPORTS_PER_SOL;
+                
+                // For demo purposes, we'll send to a hardcoded address
+                // In production, never hardcode addresses!
+                const recipientAddress = new solanaWeb3.PublicKey("C6QpFpY6gKZSmdYsCj9qS3xSxpfa3FSsXv9VjB6aVXq9"); // Example address
+                const fromPublicKey = new solanaWeb3.PublicKey(account);
+                
+                // Get latest blockhash
+                const { blockhash } = await solanaConnection.getLatestBlockhash();
+                
+                // Create transaction
+                const transaction = new solanaWeb3.Transaction().add(
+                    solanaWeb3.SystemProgram.transfer({
+                        fromPubkey: fromPublicKey,
+                        toPubkey: recipientAddress,
+                        lamports: amountInLamports,
+                    })
+                );
+                
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = fromPublicKey;
+                
+                // Request signature from wallet
+                const { signature } = await window.solana.signAndSendTransaction(transaction);
+                
+                // Confirm transaction
+                await solanaConnection.confirmTransaction(signature);
+                
+                // Transaction successful
+                document.getElementById('pendingStatus').style.display = 'none';
+                document.getElementById('successStatus').style.display = 'flex';
+                document.getElementById('transactionTitle').textContent = 'Transaction Successful';
+                document.getElementById('transactionSpinner').className = 'fas fa-check-circle';
+                document.getElementById('transactionText').textContent = 'Your transaction was successful.';
+                
+                // Show transaction hash
+                document.getElementById('transactionHash').textContent = `Transaction Signature: ${signature}`;
+                document.getElementById('transactionHash').style.display = 'block';
+                
+                // Show explorer link
+                const explorerLink = document.getElementById('explorerLink');
+                explorerLink.href = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+                explorerLink.style.display = 'inline-block';
+                
+                // Update balance
+                await updateBalance();
+                
+                // Add transaction to history
+                addTransactionToHistory(amount, signature, 'outcome');
+            }
+            
+            // Load transaction history
+            function loadTransactionHistory() {
+                // In a real application, you would fetch transaction history from the blockchain
+                // For demo purposes, we'll use local storage
+                const storedTransactions = localStorage.getItem(`transactions_${account}`);
+                
+                if (storedTransactions) {
+                    const transactions = JSON.parse(storedTransactions);
+                    
+                    if (transactions.length > 0) {
+                        transactionsList.innerHTML = '';
+                        
+                        transactions.forEach(tx => {
+                            addTransactionToUI(tx.amount, tx.hash, tx.type, tx.date);
+                        });
+                    } else {
+                        transactionsList.innerHTML = `
+                            <div class="transaction">
+                                <div class="transaction-details">
+                                    <div class="transaction-icon income">
+                                        <i class="fas fa-arrow-down"></i>
+                                    </div>
+                                    <div class="transaction-info">
+                                        <div class="transaction-title">No transactions yet</div>
+                                        <div class="transaction-date">Make your first transaction</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            }
+            
+            // Add transaction to history
+            function addTransactionToHistory(amount, hash, type) {
+                const transaction = {
+                    amount,
+                    hash,
+                    type,
+                    date: new Date().toISOString()
+                };
+                
+                // Get existing transactions or create new array
+                const storedTransactions = localStorage.getItem(`transactions_${account}`);
+                let transactions = storedTransactions ? JSON.parse(storedTransactions) : [];
+                
+                // Add new transaction
+                transactions.unshift(transaction);
+                
+                // Save to local storage
+                localStorage.setItem(`transactions_${account}`, JSON.stringify(transactions));
+                
+                // Update UI
+                addTransactionToUI(amount, hash, type, transaction.date);
+            }
+            
+            // Add transaction to UI
+            function addTransactionToUI(amount, hash, type, date) {
+                // Remove "no transactions" message if it exists
+                if (transactionsList.querySelector('.transaction-title')?.textContent === 'No transactions yet') {
+                    transactionsList.innerHTML = '';
+                }
+                
+                const transactionEl = document.createElement('div');
+                transactionEl.className = 'transaction';
+                
+                const isIncome = type === 'income';
+                const currency = currentNetwork === 'ethereum' ? 'ETH' : 'SOL';
+                
+                transactionEl.innerHTML = `
+                    <div class="transaction-details">
+                        <div class="transaction-icon ${isIncome ? 'income' : 'outcome'}">
+                            <i class="fas fa-${isIncome ? 'arrow-down' : 'arrow-up'}"></i>
+                        </div>
+                        <div class="transaction-info">
+                            <div class="transaction-title">${isIncome ? 'Received' : 'Sent'} ${currency}</div>
+                            <div class="transaction-date">${new Date(date).toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <div class="transaction-amount ${isIncome ? 'income' : 'outcome'}">
+                        ${isIncome ? '+' : '-'}${amount} ${currency}
+                    </div>
+                `;
+                
+                transactionsList.prepend(transactionEl);
+            }
+            
+            // Reset transaction modal
+            function resetTransactionModal() {
+                document.getElementById('pendingStatus').style.display = 'flex';
+                document.getElementById('successStatus').style.display = 'none';
+                document.getElementById('errorStatus').style.display = 'none';
+                document.getElementById('transactionTitle').textContent = 'Processing Transaction';
+                document.getElementById('transactionSpinner').className = 'fas fa-spinner fa-spin';
+                document.getElementById('transactionText').textContent = 'Please confirm the transaction in your wallet to complete the funding process.';
+                document.getElementById('transactionHash').style.display = 'none';
+                document.getElementById('explorerLink').style.display = 'none';
+            }
+            
+            // Show notification
+            function showNotification(message, type) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                
+                let icon = 'fas fa-info-circle';
+                if (type === 'success') icon = 'fas fa-check-circle';
+                if (type === 'error') icon = 'fas fa-exclamation-circle';
+                
+                notification.innerHTML = `
+                    <i class="${icon}"></i>
+                    <span>${message}</span>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Show notification
+                setTimeout(() => {
+                    notification.classList.add('show');
+                }, 100);
+                
+                // Hide and remove after 3 seconds
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 300);
+                }, 3000);
+            }
+            
+            // Initialize
+            if (typeof window.ethereum !== 'undefined') {
+                // Check if already connected to Ethereum
+                window.ethereum.request({ method: 'eth_accounts' })
+                    .then(accounts => {
+                        if (accounts.length > 0) {
+                            account = accounts[0];
+                            connectEthereumWallet();
+                        }
+                    })
+                    .catch(console.error);
+            }
+            
+            // Check if already connected to Solana (Phantom)
+            if (window.solana && window.solana.isConnected) {
+                window.solana.connect({ onlyIfTrusted: true })
+                    .then(response => {
+                        if (response.publicKey) {
+                            account = response.publicKey.toString();
+                            currentNetwork = 'solana';
+                            ethereumBtn.classList.remove('active');
+                            solanaBtn.classList.add('active');
+                            ethereumAlert.style.display = 'none';
+                            solanaAlert.style.display = 'flex';
+                            isRightNetwork = true;
+                            updateUI();
+                            updateBalance();
+                            loadTransactionHistory();
+                        }
+                    })
+                    .catch(console.error);
+            }
+        });
+    </script>
+</body>
+
+</html>
